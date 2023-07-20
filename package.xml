@@ -12,8 +12,6 @@
 
   <buildtool_depend>cmake</buildtool_depend>
 
-  <depend>asio</depend>
-
   <doc_depend>doxygen</doc_depend>
 
   <test_depend>gtest</test_depend>

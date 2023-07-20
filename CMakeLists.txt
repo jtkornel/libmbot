@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.27)
+cmake_minimum_required(VERSION 3.16)
 project(libmbot)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -9,22 +9,18 @@ set(CMAKE_CXX_STANDARD 14)
 
 set(LIBRARY_NAME mbot)
 
-include(FetchContent)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-FetchContent_Declare(
-        asio
-        GIT_REPOSITORY https://github.com/chriskohlhoff/asio
-        GIT_TAG asio-1-28-0
-        UPDATE_DISCONNECTED 1
-)
+find_package(Asio REQUIRED)
+find_package(Threads REQUIRED)
 
-FetchContent_Populate(asio)
-include_directories(${asio_SOURCE_DIR}/asio/include/)
 
 # Declare cpp library
 add_library(${LIBRARY_NAME} SHARED
   src/comm.cpp
 )
+
+target_link_libraries(${LIBRARY_NAME} asio)
 
 install(
   TARGETS

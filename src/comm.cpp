@@ -1,5 +1,7 @@
+#ifndef ASIO_STANDALONE
+#error "Code assumes non-boost ASIO"
+#endif
 
-#define ASIO_STANDALONE
 #include <asio.hpp>
 
 int main()

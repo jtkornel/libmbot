@@ -1,0 +1,13 @@
+# Based on https://alandefreitas.github.io/moderncpp/utilities/networking/async-network/
+include(FetchContent)
+if (NOT Asio_FOUND)
+    FetchContent_Declare(asio GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git GIT_TAG asio-1-28-0)
+    FetchContent_GetProperties(asio)
+    if (NOT asio_POPULATED)
+        FetchContent_Populate(asio)
+        add_library(asio INTERFACE)
+        target_include_directories(asio INTERFACE ${asio_SOURCE_DIR}/asio/include)
+        target_compile_definitions(asio INTERFACE ASIO_STANDALONE ASIO_NO_DEPRECATED)
+        target_link_libraries(asio INTERFACE Threads::Threads)
+    endif ()
+endif()
