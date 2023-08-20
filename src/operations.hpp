@@ -15,7 +15,8 @@ template<typename D, typename P = Noparam>
 class GetOperation
 {
     public:
-    std::optional<D> request(uint8_t slot);
+    std::optional<D> request();
+    std::optional<D> request(uint8_t key);
 
     GetOperation(Comm& comm,
                  uint8_t mbot_device_id,
@@ -29,44 +30,34 @@ class GetOperation
     GetOperation(Comm& comm,
                  uint8_t mbot_device_id,
                  uint8_t port,
-                 uint8_t suboperation,
-                 uint8_t suboperation_byte)
+                 uint8_t slot)
     : m_comm(comm)
     , m_mbot_device_id(mbot_device_id)
-    , m_mbot_suboperation(suboperation)
-    , m_suboperation_byte(suboperation_byte)
     , m_port(port)
+    , m_slot(slot)
     {
     }
 
     GetOperation(Comm& comm,
                  uint8_t mbot_device_id,
                  uint8_t port,
+                 uint8_t slot,
                  P param)
     : m_comm(comm)
     , m_mbot_device_id(mbot_device_id)
     , m_port(port)
+    , m_slot(slot)
     , m_param(param)
     {
     }
 
-
-
     private:
-    bool suboperation_set() const
-    {
-        return m_suboperation_byte != 0;
-    }
-
     std::vector<uint8_t> create_header(uint8_t slot) const;
 
     Comm & m_comm;
     uint8_t m_mbot_device_id;
-    uint8_t m_mbot_suboperation;
-    uint8_t m_suboperation_byte; // TODO: optional
-
     uint8_t m_port;
-    uint8_t m_port_byte=6;
+    uint8_t m_slot; // TODO: optional
 
     P m_param;
 };
@@ -80,19 +71,9 @@ inline std::vector<uint8_t> GetOperation<D,P>::create_header(uint8_t slot) const
                     0, // 3 index
                     1, // 4 action=GET
                     m_mbot_device_id, // 5 device
-                    0, // 6 port/subcommand
+                    m_port, // 6 port/subcommand
                     slot, // 7 slot/subcommand
     };
-
-    size_t header_size = msg.size();
-
-    if(m_port_byte < header_size) {
-        msg[m_port_byte] = m_port;
-    }
-
-    if(suboperation_set() && m_suboperation_byte < header_size) {
-        msg[m_suboperation_byte] = m_mbot_suboperation;
-    }
 
     return msg;
 }
@@ -136,9 +117,9 @@ std::optional<D> parse_message(std::vector<uint8_t> msg, size_t header_size)
 }
 
 template<typename D, typename P>
-inline std::optional<D> GetOperation<D, P>::request(uint8_t slot)
+inline std::optional<D> GetOperation<D, P>::request()
 {
-    auto msg = create_header(slot);
+    auto msg = create_header(m_slot);
     append_message_data<P>(msg, m_param);
 
     std::vector<uint8_t> reply_msg = m_comm.write_message(msg);
@@ -146,6 +127,16 @@ inline std::optional<D> GetOperation<D, P>::request(uint8_t slot)
     return parse_message<D>(reply_msg, 4); // received header is 4 bytes
 }
 
+template<typename D, typename P>
+inline std::optional<D> GetOperation<D, P>::request(uint8_t key)
+{
+    auto msg = create_header(key);
+    append_message_data<P>(msg, m_param);
+
+    std::vector<uint8_t> reply_msg = m_comm.write_message(msg);
+
+    return parse_message<D>(reply_msg, 4); // received header is 4 bytes
+}
 
 inline void start_operation(Comm& comm)
 {
@@ -163,50 +154,31 @@ template <typename D>
 class SetOperation
 {
     public:
-    void request(uint8_t slot, D data);
-
-    SetOperation(Comm& comm,
-                 uint8_t mbot_device_id,
-                 uint8_t port)
-    : m_comm(comm)
-    , m_mbot_device_id(mbot_device_id)
-    , m_port(port)
-    {
-    }
+    void request(D data);
 
     SetOperation(Comm& comm,
                  uint8_t mbot_device_id,
                  uint8_t port,
-                 uint8_t suboperation,
-                 uint8_t suboperation_byte)
+                 uint8_t slot)
     : m_comm(comm)
     , m_mbot_device_id(mbot_device_id)
-    , m_mbot_suboperation(suboperation)
-    , m_suboperation_byte(suboperation_byte)
     , m_port(port)
+    , m_slot(slot)
     {
     }
 
     private:
-    bool suboperation_set()
-    {
-        return m_suboperation_byte != 0;
-    }
-
-    std::vector<uint8_t> create_header(uint8_t slot) const;
+    std::vector<uint8_t> create_header() const;
 
     Comm& m_comm;
 
     uint8_t m_mbot_device_id;
-    uint8_t m_mbot_suboperation=0;
-    uint8_t m_suboperation_byte=0; // TODO: use optional
-
     uint8_t m_port;
-    uint8_t m_port_byte=6;
+    uint8_t m_slot;
 };
 
 template<typename D>
-inline std::vector<uint8_t> SetOperation<D>::create_header(uint8_t slot) const
+inline std::vector<uint8_t> SetOperation<D>::create_header() const
 {
     std::vector<uint8_t> msg {0xff, // 0
                     0x55, // 1
@@ -214,28 +186,18 @@ inline std::vector<uint8_t> SetOperation<D>::create_header(uint8_t slot) const
                     0, // 3 index
                     2, // 4 action=RUN
                     m_mbot_device_id, // 5 device
-                    0, // 6 port/subcommand
-                    slot, // 7 slot/subcommand
+                    m_port, // 6 port/subcommand
+                    m_slot, // 7 slot/subcommand
     };
-
-    size_t header_size = msg.size();
-
-    if(m_port_byte < header_size) {
-        msg[m_port_byte] = m_port;
-    }
-
-    if(suboperation_set() && m_suboperation_byte < header_size) {
-        msg[m_suboperation_byte] = m_mbot_suboperation;
-    }
 
     return msg;
 }
 
 
 template<typename D>
-inline void SetOperation<D>::request(uint8_t slot, D data)
+inline void SetOperation<D>::request(D data)
 {
-    std::vector<uint8_t> msg = create_header(slot);
+    std::vector<uint8_t> msg = create_header();
 
     append_message_data(msg, data);
 

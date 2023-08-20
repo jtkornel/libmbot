@@ -8,48 +8,6 @@
 
 #include <serial/serial.h>
 
-#define BUFSIZE 256
-
-// Board -> Device -> Operation -> Data
-
-#if 0
-class Message
-{
-    public:
-    std::vector<uint8_t> encode()
-    {
-
-         #if 1
-        std::vector<uint8_t> msg {0xff, // 0
-                      0x55, // 1
-                      7, // 2 length
-                      0, // 3 index
-                      2, // 4 action=RUN
-                      62,// 5 device = encoder pid motion
-                      2, // 6 port - subcommand SPEED
-                      2, // 7 slot - motor num
-                      0x2F, // 8 speed LSB
-                      0, // 9
-                      };
-        #else
-        std::vector<uint8_t> msg {0xff, // 0
-                      0x55, // 1
-                      8, // 2 length
-                      0, // 3 index
-                      2, // 4 action = RUN
-                      34,// 5 device = TONE
-                      45, // 6 port - BUZZER
-                      0, // 7 hz lsb
-                      4, // 8 hz msb
-                      0xff, // 9 ms lsb
-                      1, // 10 ms msb
-                      };
-        #endif
-
-        return msg;
-    }
-};
-#endif
 
 class Comm
 {
@@ -57,6 +15,7 @@ class Comm
     Comm(serial::Serial &port)
     : m_port(port)
     {
+        init_handshake();
     }
 
     void flush()
@@ -76,81 +35,76 @@ class Comm
         msg[2] = msg.size() - 3;
         msg[3] = msg_index;
 
-        std::vector<uint8_t> in_msg;
-        size_t retries = 0;
-        bool transmitted = false;
+        std::vector<uint8_t> return_msg;
+        bool return_ok = false;
 
-        while(!transmitted)
-        {
+        // Resend message until a valid response is received
+        while(!return_ok) {
             m_port.write(msg);
 
             m_port.flushInput();
 
-            in_msg = read_message();
+            return_msg = read_message();
 
-            auto ret_msg_index = message_index(in_msg);
+            auto return_msg_ind = message_index(return_msg);
 
-            while(ret_msg_index && !transmitted) {
-                if(ret_msg_index == msg_index) {
-                    transmitted = true;
+            // Ignore possible older unread messages
+            while(return_msg_ind && !return_ok) {
+                if(return_msg_ind != msg_index) {
+                    return_msg = read_message();
+                    return_msg_ind = message_index(return_msg);
                 }
                 else {
-                    in_msg = read_message();
-                    ret_msg_index = message_index(in_msg);
+                    return_ok = true;
                 }
             }
-    
-            retries++;
         }
 
-        return in_msg;
+        return return_msg;
     }
 
     std::variant<std::string, std::vector<uint8_t>> read_line()
     {
         std::string line;
-        
+
         size_t bytes_read = m_port.readline(line, 128, "\r\n");
 
         std::vector<uint8_t> packet;
-
-
-
         auto iit = line.begin();
         auto eos = line.end();
         size_t body_len = bytes_read;
-        while (iit!=eos && (body_len--))
-        {
+        while (iit!=eos && (body_len--)) {
             packet.emplace_back(*iit++);
         }
 
-        if(bytes_read < 4)
-        {
-            bytes_read += m_port.read(packet, 4 - bytes_read);
+        const size_t prefix_bytes = 2;
+
+        if(bytes_read < prefix_bytes) {
+            bytes_read += m_port.read(packet, prefix_bytes - bytes_read);
         }
 
-        if(bytes_read < 4)
-        {
+        if(bytes_read < prefix_bytes) {
             printf("******* Received %lu bytes ***************\n", bytes_read);
             return packet;
         }
 
         uint8_t h0 = packet[0], h1 = packet[1];
 
-        if(h0==0xff && h1==0x55)
-        {
+        if(h0==0xff && h1==0x55) {
 
-            if(bytes_read < 5)
-            {
-                bytes_read += m_port.read(packet, 5 - bytes_read);
+            const size_t header_bytes = 4;
+            const size_t d0_bytes = 1;
+            const size_t min_bytes = header_bytes + d0_bytes;
+
+            if(bytes_read < min_bytes) {
+                bytes_read += m_port.read(packet, min_bytes - bytes_read);
             }
 
-            if(bytes_read < 5) {
+            if(bytes_read < min_bytes) {
                 printf("******* Received %lu bytes ***************\n", bytes_read);
                 return packet;
             }
 
-            //uint8_t index = packet[2];
             uint8_t typecode = packet[3];
             uint8_t d0 = packet[4];
 
@@ -162,7 +116,7 @@ class Comm
                 break;
 
                 case 2: // float (double is equivalent on AVR arduino)
-                case 5: 
+                case 5:
                 num_bytes = 4;
                 break;
 
@@ -183,7 +137,8 @@ class Comm
                 break;
             }
 
-            size_t rem_bytes = (num_bytes + 5) > bytes_read ? num_bytes + 5 - bytes_read : 0;
+            const size_t tail_bytes = 2;
+            size_t rem_bytes = (num_bytes + header_bytes + tail_bytes) > bytes_read ? num_bytes + header_bytes + tail_bytes - bytes_read : 0;
 
             if(rem_bytes) {
                 m_port.read(packet, rem_bytes);
@@ -199,13 +154,11 @@ class Comm
     {
         auto line = read_line();
 
-        if(std::holds_alternative<std::string>(line))
-        {
+        if(std::holds_alternative<std::string>(line)) {
             std::cout << std::get<std::string>(line);
             return std::vector<uint8_t> {};
         }
-        else
-        {
+        else {
             return std::get<std::vector<uint8_t>>(line);
         }
 
@@ -221,15 +174,44 @@ class Comm
          const size_t header_size = 4;
          const size_t tail_size = 2;
 
-        if(packet.size() < header_size + tail_size)
-        {
+        if(packet.size() < header_size + tail_size) {
             return std::nullopt;
         }
 
         return packet[2];
     }
 
+    void init_handshake()
+    {
+        m_port.setTimeout(m_boot_timeout);
+        bool init_data_read = false;
+
+        while(!init_data_read)
+        {
+            flush();
+            auto line = read_line();
+            if(std::holds_alternative<std::string>(line)) {
+                std::cout << "Startup msg: " << std::get<std::string>(line) << "\n";
+                m_port.setTimeout(m_msg_timeout);
+            }
+            else {
+                auto packet = std::get<std::vector<uint8_t>>(line);
+                if(packet.size()==0) {
+                    init_data_read = true;
+                }
+            }
+        }
+
+        m_port.setTimeout(m_msg_timeout);
+
+        usleep(1500000);
+        std::cout << "Handshake completed\n";
+    }
+
     serial::Serial &m_port;
+
+    serial::Timeout m_msg_timeout {20, 50, 0, 50, 0};
+    serial::Timeout m_boot_timeout {serial::Timeout::max(), 2000, 0, 2000, 0};
 
     uint8_t m_msg_index = 0;
 };
