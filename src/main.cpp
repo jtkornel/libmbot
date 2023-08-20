@@ -9,9 +9,9 @@
 
 int main()
 {
-    serial::Timeout msg_timeout(10, 40, 0, 40, 0);
+    serial::Timeout msg_timeout(20, 50, 0, 50, 0);
     serial::Timeout boot_timeout(serial::Timeout::max(), 2000, 0, 2000, 0);
-    serial::Serial ser("/dev/tty.usbserial-143220", 38400, boot_timeout);
+    serial::Serial ser("/dev/tty.usbserial-143220", 115200, boot_timeout);
 
     Comm c(ser);
 
@@ -42,7 +42,6 @@ int main()
 
     while(1)
     {
-        usleep(2000);
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
         auto maybe_level = ss.battery_power.request(1);
