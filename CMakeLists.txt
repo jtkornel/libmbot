@@ -11,9 +11,9 @@ set(LIBRARY_NAME mbot)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-find_package(Asio REQUIRED)
+find_package(ament_cmake REQUIRED)
+find_package(serial REQUIRED)
 find_package(Threads REQUIRED)
-
 
 # Declare cpp library
 add_executable(${LIBRARY_NAME}
@@ -21,7 +21,9 @@ add_executable(${LIBRARY_NAME}
   src/operations.cpp
 )
 
-target_link_libraries(${LIBRARY_NAME} asio)
+ament_target_dependencies(${LIBRARY_NAME}
+  serial
+)
 
 install(
   TARGETS
@@ -30,3 +32,12 @@ install(
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
 )
+
+ament_export_libraries(
+  libmbot
+)
+ament_export_dependencies(
+  serial
+)
+
+ament_package()

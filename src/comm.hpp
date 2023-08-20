@@ -1,14 +1,12 @@
 #pragma once
 
-#ifndef ASIO_STANDALONE
-#error "Code assumes non-boost ASIO"
-#endif
-
 #include <iostream>
 #include <variant>
 #include <stdio.h>
+#include <unistd.h>
+#include <optional>
 
-#include <asio.hpp>
+#include <serial/serial.h>
 
 #define BUFSIZE 256
 
@@ -56,14 +54,14 @@ class Message
 class Comm
 {
     public:
-    Comm(asio::io_context &io_context, std::string device_name)
-    : m_port(io_context, device_name)
+    Comm(serial::Serial &port)
+    : m_port(port)
     {
-        m_port.set_option(asio::serial_port_base::baud_rate(115200));
-        m_port.set_option(asio::serial_port_base::character_size(8 /* data bits */));
-        m_port.set_option(asio::serial_port_base::parity(asio::serial_port_base::parity::none));
-        m_port.set_option(asio::serial_port_base::stop_bits(asio::serial_port_base::stop_bits::one));
-        m_port.set_option(asio::serial_port::flow_control(asio::serial_port::flow_control::none));
+    }
+
+    void flush()
+    {
+        m_port.flushInput();
     }
 
     std::vector<uint8_t> write_message(std::vector<uint8_t> msg)
@@ -78,27 +76,31 @@ class Comm
         msg[2] = msg.size() - 3;
         msg[3] = msg_index;
 
-        auto buf = asio::buffer(msg);
         std::vector<uint8_t> in_msg;
+        size_t retries = 0;
+        bool transmitted = false;
 
-        while(in_msg.size() == 0)
+        while(!transmitted)
         {
-            size_t bytes_written = asio::write(m_port, buf);
+            m_port.write(msg);
 
-            if(bytes_written != msg.size())
-            {
-                printf("Write fail\n");
-            }
+            m_port.flushInput();
 
             in_msg = read_message();
-        }
 
-         /*    ff 55  idx type  data a
-          *    0  1   2   3     4     */
-        uint8_t msg_index_read = in_msg[2];
-        if(msg_index_read != msg_index)
-        {
-            printf("Received msg_index %lu differs from sent %lu\n", (size_t)msg_index_read, (size_t)msg_index);
+            auto ret_msg_index = message_index(in_msg);
+
+            while(ret_msg_index && !transmitted) {
+                if(ret_msg_index == msg_index) {
+                    transmitted = true;
+                }
+                else {
+                    in_msg = read_message();
+                    ret_msg_index = message_index(in_msg);
+                }
+            }
+    
+            retries++;
         }
 
         return in_msg;
@@ -106,44 +108,51 @@ class Comm
 
     std::variant<std::string, std::vector<uint8_t>> read_line()
     {
-        std::error_code cd;
-
-        size_t bytes_read = asio::read_until(m_port, m_b, "\r\n", cd);
-
-        if(cd)
-        {
-            return "Reading serial port failed";
-        }
-
-        std::istream is(&m_b);
-
-        if(bytes_read < 4) {
-            std::string line;
-            std::getline(is, line);
-            return line;
-        }
+        std::string line;
+        
+        size_t bytes_read = m_port.readline(line, 128, "\r\n");
 
         std::vector<uint8_t> packet;
 
-        auto iit = std::istreambuf_iterator<char>(is);
-        auto eos = std::istreambuf_iterator<char>();
+
+
+        auto iit = line.begin();
+        auto eos = line.end();
         size_t body_len = bytes_read;
-        while (iit!=eos && (body_len--)) packet.emplace_back(*iit++);
+        while (iit!=eos && (body_len--))
+        {
+            packet.emplace_back(*iit++);
+        }
+
+        if(bytes_read < 4)
+        {
+            bytes_read += m_port.read(packet, 4 - bytes_read);
+        }
+
+        if(bytes_read < 4)
+        {
+            printf("******* Received %lu bytes ***************\n", bytes_read);
+            return packet;
+        }
 
         uint8_t h0 = packet[0], h1 = packet[1];
 
         if(h0==0xff && h1==0x55)
         {
 
-            if(bytes_read < 6) {
-                return "";
+            if(bytes_read < 5)
+            {
+                bytes_read += m_port.read(packet, 5 - bytes_read);
             }
 
-            uint8_t index, typecode, d0;
+            if(bytes_read < 5) {
+                printf("******* Received %lu bytes ***************\n", bytes_read);
+                return packet;
+            }
 
-            index = packet[2];
-            typecode = packet[3];
-            d0 = packet[4];
+            //uint8_t index = packet[2];
+            uint8_t typecode = packet[3];
+            uint8_t d0 = packet[4];
 
             size_t num_bytes;
             switch(typecode)
@@ -176,16 +185,14 @@ class Comm
 
             size_t rem_bytes = (num_bytes + 5) > bytes_read ? num_bytes + 5 - bytes_read : 0;
 
-            printf("Index %u, Typecode %u, num bytes %lu, rem_bytes %lu\n", index, typecode, num_bytes, rem_bytes);
-
-            asio::read(m_port, m_b, asio::transfer_exactly(rem_bytes));
-            
-            while (iit!=eos && (rem_bytes--)) packet.emplace_back(*iit++);
+            if(rem_bytes) {
+                m_port.read(packet, rem_bytes);
+            }
 
             return packet;
         }
 
-        return "No packet";
+        return line;
     }
 
     std::vector<uint8_t> read_message()
@@ -204,27 +211,25 @@ class Comm
 
     }
 
-    void read_dump_loop()
+    private:
+
+    std::optional<uint8_t> message_index(std::vector<uint8_t> packet) const
     {
-        while(true) {
-        uint8_t data[BUFSIZE];
-        size_t n = m_port.read_some(asio::buffer(data, BUFSIZE));
-        
-        if(n)
+         /*    ff 55  idx type  data a
+          *    0  1   2   3     4     */
+
+         const size_t header_size = 4;
+         const size_t tail_size = 2;
+
+        if(packet.size() < header_size + tail_size)
         {
-            for(size_t m=0; m < n; m++)
-            {
-                printf("%02x ", data[m]);
-            }
-            printf("\n");
+            return std::nullopt;
         }
 
-        }
+        return packet[2];
     }
 
-    private:
-    asio::serial_port m_port;
-    asio::streambuf m_b {256};
+    serial::Serial &m_port;
 
     uint8_t m_msg_index = 0;
 };

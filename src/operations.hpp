@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include <tuple>
+#include <optional>
 
 
 using Noparam = std::tuple<>;
@@ -14,7 +15,7 @@ template<typename D, typename P = Noparam>
 class GetOperation
 {
     public:
-    D request(uint8_t slot);
+    std::optional<D> request(uint8_t slot);
 
     GetOperation(Comm& comm,
                  uint8_t mbot_device_id,
@@ -116,24 +117,26 @@ inline void append_message_data<Noparam>(std::vector<uint8_t> msg, Noparam &data
 }
 
 template<typename D>
-D parse_message(std::vector<uint8_t> msg, size_t header_size)
+std::optional<D> parse_message(std::vector<uint8_t> msg, size_t header_size)
 {
     size_t msg_size = msg.size();
-    size_t data_size = msg_size >= header_size ? msg_size - header_size : 0; // Newline
-
-    D result{};
+    const size_t newline_size = 2;
+    size_t overhead_size = newline_size + header_size;
+    size_t data_size = msg_size >= overhead_size? msg_size - overhead_size: 0;
 
     if(data_size == sizeof(D)) {
+        D result{};
         uint8_t * data_ptr = &msg[header_size];
         uint8_t * result_data_ptr = reinterpret_cast<uint8_t *>(&result);
         memcpy(result_data_ptr, data_ptr, sizeof(D));
+        return result;
     }
 
-    return result;
+    return std::nullopt;
 }
 
 template<typename D, typename P>
-inline D GetOperation<D, P>::request(uint8_t slot)
+inline std::optional<D> GetOperation<D, P>::request(uint8_t slot)
 {
     auto msg = create_header(slot);
     append_message_data<P>(msg, m_param);
@@ -143,6 +146,18 @@ inline D GetOperation<D, P>::request(uint8_t slot)
     return parse_message<D>(reply_msg, 4); // received header is 4 bytes
 }
 
+
+inline void start_operation(Comm& comm)
+{
+    std::vector<uint8_t> msg {0xff, // 0
+                    0x55, // 1
+                    0, // 2 length
+                    0, // 3 index
+                    5, // 4 action=START
+                    1, // 5 device
+    };
+    comm.write_message(msg);
+}
 
 template <typename D>
 class SetOperation
