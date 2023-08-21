@@ -156,6 +156,16 @@ class SetOperation
     public:
     void request(D data);
 
+
+    SetOperation(Comm& comm,
+                 uint8_t mbot_device_id,
+                 uint8_t port)
+    : m_comm(comm)
+    , m_mbot_device_id(mbot_device_id)
+    , m_port(port)
+    {
+    }
+
     SetOperation(Comm& comm,
                  uint8_t mbot_device_id,
                  uint8_t port,

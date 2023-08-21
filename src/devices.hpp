@@ -328,6 +328,7 @@ class EncoderBoard
     , set_pwm_motion    (comm, 62, SubOpId(3), 0)
     , set_cur_pos_zero  (comm, 62, SubOpId(4), 0)
     , set_car_pos_motion(comm, 62, SubOpId(5), 0)
+    , set_target_pwm    (comm, 61, slot)          // Redundant with set_pwm_motion
     {
     }
 
@@ -338,4 +339,17 @@ class EncoderBoard
     SetOperation<int16_t> set_pwm_motion;
     SetOperation<Noparam> set_cur_pos_zero;
     SetOperation<PosMotion> set_car_pos_motion;
+    SetOperation<int16_t> set_target_pwm;
 };
+
+class DCMotor
+{
+    public:
+    DCMotor(Comm& comm, uint8_t port)
+    : set_speed(comm, 10, port)
+    {
+    }
+
+    SetOperation<int16_t> set_speed;
+};
+
