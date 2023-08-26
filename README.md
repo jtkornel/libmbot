@@ -5,17 +5,14 @@ Libmbot has an object representation of devices connected the Makeblock Arduino 
 
 As a higher-level abstraction devices can be grouped into board objects which helps configuring built-in ports and slots and validate externally connected devices.
 
+The library has primarily been tested on Linux. Mac support may be possible, but I have experienced unreliable communication for the USB-Serial bridge on that platform.
 
 ## How to install
 
-Libmbot depends on ament_cmake from ROS2, plus an ament fork of the wjwwood serial library, and is easiest to build as a part of a ROS2 workspace.
+Libmbot uses CMake as its build system, and can be built standalone or as part of a ROS2 workspace. It depends on ASIO for serial communication, which is automatically downloaded using FetchContent in the CMake file.
 
-For instance add to your workspace .repo file
+To build in ROS2 you can for instance add to your workspace .repo file
 ```
-  serial:
-    type: git
-    url: https://github.com/RoverRobotics-forks/serial-ros2
-    version: master
   libmbot:
     type: git
     url: https://github.com/jtkornel/libmbot
@@ -23,7 +20,6 @@ For instance add to your workspace .repo file
 
 ```
 
-You can then download and build the library and its dependency
 ```
 vcs import src < my_workspace.repos
 
