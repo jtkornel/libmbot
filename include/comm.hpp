@@ -28,18 +28,16 @@ class Comm
     }
 
     std::vector<uint8_t> write_message(std::vector<uint8_t> msg);
-
-    std::variant<std::string, std::vector<uint8_t>> read_line();
-
-    std::vector<uint8_t> read_message();
+    std::optional<std::vector<uint8_t>> read_message();
 
     private:
-
-    std::optional<uint8_t> message_index(std::vector<uint8_t> packet) const;
+    std::variant<std::string, std::vector<uint8_t>> read_message_or_text();
+    void move_streambuf_to_packet(std::vector<uint8_t>& packet);
+    std::optional<uint8_t> message_index(std::optional<std::vector<uint8_t>> packet) const;
     void init_handshake();
 
     asio::serial_port m_port;
-    asio::streambuf m_b {256};
+    asio::streambuf m_streambuf {256};
 
     uint8_t m_msg_index = 0;
 };

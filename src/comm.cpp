@@ -14,22 +14,22 @@ std::vector<uint8_t> Comm::write_message(std::vector<uint8_t> msg)
     msg[3] = msg_index;
 
     auto buf = asio::buffer(msg);
-    std::vector<uint8_t> return_msg;
+    std::optional<std::vector<uint8_t>> maybe_msg;
     bool return_ok = false;
 
     // Resend message until a valid response is received
     while(!return_ok) {
         asio::write(m_port, buf);
 
-        return_msg = read_message();
+        maybe_msg = read_message();
 
-        auto return_msg_ind = message_index(return_msg);
+        auto return_msg_ind = message_index(maybe_msg);
 
         // Ignore possible older unread messages
         while(return_msg_ind && !return_ok) {
             if(return_msg_ind != msg_index) {
-                return_msg = read_message();
-                return_msg_ind = message_index(return_msg);
+                maybe_msg = read_message();
+                return_msg_ind = message_index(maybe_msg);
             }
             else {
                 return_ok = true;
@@ -37,34 +37,38 @@ std::vector<uint8_t> Comm::write_message(std::vector<uint8_t> msg)
         }
     }
 
-    return return_msg;
+    return *maybe_msg;
 }
 
-std::variant<std::string, std::vector<uint8_t>> Comm::read_line()
+
+void Comm::move_streambuf_to_packet(std::vector<uint8_t>& packet)
+{
+    std::istream is(&m_streambuf);
+    auto iit = std::istreambuf_iterator<char>(is);
+    auto eos = std::istreambuf_iterator<char>();
+    while (iit!=eos) {
+        packet.emplace_back(*iit++);
+    }
+}
+
+std::variant<std::string, std::vector<uint8_t>> Comm::read_message_or_text()
 {
     std::error_code cd;
 
-    size_t bytes_read = asio::read_until(m_port, m_b, "\r\n", cd);
-    std::istream is(&m_b);
+    size_t bytes_read = asio::read_until(m_port, m_streambuf, "\r\n", cd);
 
     if(cd) {
         return "Reading serial port failed";
     }
 
-    std::vector<uint8_t> packet;
-    auto iit = std::istreambuf_iterator<char>(is);
-    auto eos = std::istreambuf_iterator<char>();
-    size_t body_len = bytes_read;
-    while (iit!=eos && (body_len--)) {
-        packet.emplace_back(*iit++);
-    }
-
     const size_t prefix_bytes = 2;
-
     if(bytes_read < prefix_bytes) {
-        asio::read(m_port, m_b, asio::transfer_exactly(prefix_bytes - bytes_read));
+        asio::read(m_port, m_streambuf, asio::transfer_exactly(prefix_bytes - bytes_read));
         bytes_read = prefix_bytes;
     }
+
+    std::vector<uint8_t> packet;
+    move_streambuf_to_packet(packet);
 
     uint8_t h0 = packet[0], h1 = packet[1];
 
@@ -75,7 +79,8 @@ std::variant<std::string, std::vector<uint8_t>> Comm::read_line()
         const size_t min_bytes = header_bytes + d0_bytes;
 
         if(bytes_read < min_bytes) {
-            asio::read(m_port, m_b, asio::transfer_exactly(min_bytes - bytes_read));
+            asio::read(m_port, m_streambuf, asio::transfer_exactly(min_bytes - bytes_read));
+            move_streambuf_to_packet(packet);
             bytes_read = min_bytes;
         }
 
@@ -115,39 +120,46 @@ std::variant<std::string, std::vector<uint8_t>> Comm::read_line()
         size_t rem_bytes = (num_bytes + header_bytes + tail_bytes) > bytes_read ? num_bytes + header_bytes + tail_bytes - bytes_read : 0;
 
         if(rem_bytes) {
-            asio::read(m_port, m_b, asio::transfer_exactly(rem_bytes));
+            asio::read(m_port, m_streambuf, asio::transfer_exactly(rem_bytes));
+            move_streambuf_to_packet(packet);
         }
 
         return packet;
     }
 
-    // Assuming it is a debug message,
-    // copy packet bytes to line string
-    std::string line;
+    // Assuming it is a debug text message,
+    // copy packet bytes to string
+    std::string text;
 
     for(auto b : packet) {
-        line += b;
+        text += b;
     }
 
-    return line;
+    return text;
 }
 
 
-std::vector<uint8_t> Comm::read_message()
+std::optional<std::vector<uint8_t>> Comm::read_message()
 {
-    auto line = read_line();
+    auto data = read_message_or_text();
 
-    if(std::holds_alternative<std::string>(line)) {
-        std::cout << std::get<std::string>(line);
-        return std::vector<uint8_t> {};
+    if(std::holds_alternative<std::string>(data)) {
+        std::cout << std::get<std::string>(data);
+        return std::nullopt;
     }
     else {
-        return std::get<std::vector<uint8_t>>(line);
+        return std::get<std::vector<uint8_t>>(data);
     }
 }
 
-std::optional<uint8_t> Comm::message_index(std::vector<uint8_t> packet) const
+std::optional<uint8_t> Comm::message_index(std::optional<std::vector<uint8_t>> maybe_packet) const
 {
+    if(!maybe_packet) {
+        return std::nullopt;
+    }
+
+    auto packet = *maybe_packet;
+
     /*   ff 55  idx type  data a
     *    0  1   2   3     4     */
 
@@ -167,15 +179,14 @@ void Comm::init_handshake()
 
     while(!handshake_ok)
     {
-        auto line = read_line();
-        if(std::holds_alternative<std::string>(line)) {
-            std::cout << "Startup msg: " << std::get<std::string>(line) << "\n";
+        auto data = read_message_or_text();
+        if(std::holds_alternative<std::string>(data)) {
+            std::cout << "Startup msg: " << std::get<std::string>(data) << "\n";
             handshake_ok = true;
         }
         else {
-            std::cout << "Received initial data:\n";
-
-            for(auto b : std::get<std::vector<uint8_t>>(line)) {
+            std::cout << "Received initial binary data:\n";
+            for(auto b : std::get<std::vector<uint8_t>>(data)) {
                 printf("%02x ", b);
             }
             printf("\n");

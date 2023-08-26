@@ -19,32 +19,32 @@ class GetOperation
     std::optional<D> request(uint8_t key);
 
     GetOperation(Comm& comm,
-                 uint8_t mbot_device_id,
+                 uint8_t device_id,
                  uint8_t port)
     : m_comm(comm)
-    , m_mbot_device_id(mbot_device_id)
+    , m_device_id(device_id)
     , m_port(port)
     {
     }
 
     GetOperation(Comm& comm,
-                 uint8_t mbot_device_id,
+                 uint8_t device_id,
                  uint8_t port,
                  uint8_t slot)
     : m_comm(comm)
-    , m_mbot_device_id(mbot_device_id)
+    , m_device_id(device_id)
     , m_port(port)
     , m_slot(slot)
     {
     }
 
     GetOperation(Comm& comm,
-                 uint8_t mbot_device_id,
+                 uint8_t device_id,
                  uint8_t port,
                  uint8_t slot,
                  P param)
     : m_comm(comm)
-    , m_mbot_device_id(mbot_device_id)
+    , m_device_id(device_id)
     , m_port(port)
     , m_slot(slot)
     , m_param(param)
@@ -55,7 +55,7 @@ class GetOperation
     std::vector<uint8_t> create_header(uint8_t slot) const;
 
     Comm & m_comm;
-    uint8_t m_mbot_device_id;
+    uint8_t m_device_id;
     uint8_t m_port;
     std::optional<uint8_t> m_slot = std::nullopt;
 
@@ -70,7 +70,7 @@ inline std::vector<uint8_t> GetOperation<D,P>::create_header(uint8_t slot) const
                     0, // 2 length
                     0, // 3 index
                     1, // 4 action=GET
-                    m_mbot_device_id, // 5 device
+                    m_device_id, // 5 device
                     m_port, // 6 port/subcommand
                     slot, // 7 slot/subcommand
     };
@@ -164,20 +164,20 @@ class SetOperation
 
 
     SetOperation(Comm& comm,
-                 uint8_t mbot_device_id,
+                 uint8_t device_id,
                  uint8_t port)
     : m_comm(comm)
-    , m_mbot_device_id(mbot_device_id)
+    , m_device_id(device_id)
     , m_port(port)
     {
     }
 
     SetOperation(Comm& comm,
-                 uint8_t mbot_device_id,
+                 uint8_t device_id,
                  uint8_t port,
                  uint8_t slot)
     : m_comm(comm)
-    , m_mbot_device_id(mbot_device_id)
+    , m_device_id(device_id)
     , m_port(port)
     , m_slot(slot)
     {
@@ -188,7 +188,7 @@ class SetOperation
 
     Comm& m_comm;
 
-    uint8_t m_mbot_device_id;
+    uint8_t m_device_id;
     uint8_t m_port;
     std::optional<uint8_t> m_slot = std::nullopt;
 };
@@ -201,7 +201,7 @@ inline std::vector<uint8_t> SetOperation<D>::create_header() const
                     0, // 2 length
                     0, // 3 index
                     2, // 4 action=RUN
-                    m_mbot_device_id, // 5 device
+                    m_device_id, // 5 device
                     m_port, // 6 port/subcommand
                     m_slot.value_or(0), // 7 slot/subcommand
     };
