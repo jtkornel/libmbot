@@ -19,7 +19,7 @@ To build in ROS2 you can for instance add to your workspace .repo file
     version: main
 
 ```
-And then to download the sourcecode and build:
+And then download the sourcecode and build:
 ```
 vcs import src < my_workspace.repos
 
