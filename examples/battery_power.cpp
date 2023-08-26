@@ -1,7 +1,7 @@
 #include "comm.hpp"
 #include "devices.hpp"
 
-#include <serial/serial.h>
+#include <asio.hpp>
 
 #include <chrono>
 #include <unistd.h>
@@ -9,10 +9,9 @@
 
 int main()
 {
+    asio::io_context io_context;
 
-    serial::Serial ser("/dev/ttyUSB0", 115200);
-
-    Comm c(ser);
+    Comm c(io_context, "/dev/ttyUSB0");
 
     CommonCmd cc(c);
 

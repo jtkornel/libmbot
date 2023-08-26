@@ -10,15 +10,14 @@ set(CMAKE_CXX_STANDARD 17)
 find_program(CMAKE_CXX_CPPCHECK NAMES cppcheck)
 
 if(CMAKE_CXX_CPPCHECK)
-    list(APPEND CMAKE_CXX_CPPCHECK "--enable=style")
+    list(APPEND CMAKE_CXX_CPPCHECK "--enable=style" "--suppressions-list=${CMAKE_CURRENT_SOURCE_DIR}/suppressions.txt")
 endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-find_package(ament_cmake REQUIRED)
-find_package(serial REQUIRED)
+find_package(Asio REQUIRED)
+find_package(Threads REQUIRED)
 
-# Library
 set(LIBRARY_NAME mbot)
 
 include_directories(
@@ -45,9 +44,7 @@ foreach(EXAMPLE ${EXAMPLES})
     )
 endforeach()
 
-ament_target_dependencies(${LIBRARY_NAME}
-    serial
-)
+target_link_libraries(${LIBRARY_NAME} asio)
 
 install(
     TARGETS
@@ -56,16 +53,3 @@ install(
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
 )
-
-ament_export_libraries(
-    libmbot
-)
-ament_export_include_directories(
-    include
-)
-
-ament_export_dependencies(
-    serial
-)
-
-ament_package()

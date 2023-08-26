@@ -13,14 +13,13 @@ std::vector<uint8_t> Comm::write_message(std::vector<uint8_t> msg)
     msg[2] = msg.size() - 3;
     msg[3] = msg_index;
 
+    auto buf = asio::buffer(msg);
     std::vector<uint8_t> return_msg;
     bool return_ok = false;
 
     // Resend message until a valid response is received
     while(!return_ok) {
-        m_port.write(msg);
-
-        m_port.flushInput();
+        asio::write(m_port, buf);
 
         return_msg = read_message();
 
@@ -43,13 +42,18 @@ std::vector<uint8_t> Comm::write_message(std::vector<uint8_t> msg)
 
 std::variant<std::string, std::vector<uint8_t>> Comm::read_line()
 {
-    std::string line;
+    std::error_code cd;
 
-    size_t bytes_read = m_port.readline(line, 128, "\r\n");
+    size_t bytes_read = asio::read_until(m_port, m_b, "\r\n", cd);
+    std::istream is(&m_b);
+
+    if(cd) {
+        return "Reading serial port failed";
+    }
 
     std::vector<uint8_t> packet;
-    auto iit = line.begin();
-    auto eos = line.end();
+    auto iit = std::istreambuf_iterator<char>(is);
+    auto eos = std::istreambuf_iterator<char>();
     size_t body_len = bytes_read;
     while (iit!=eos && (body_len--)) {
         packet.emplace_back(*iit++);
@@ -58,12 +62,8 @@ std::variant<std::string, std::vector<uint8_t>> Comm::read_line()
     const size_t prefix_bytes = 2;
 
     if(bytes_read < prefix_bytes) {
-        bytes_read += m_port.read(packet, prefix_bytes - bytes_read);
-    }
-
-    if(bytes_read < prefix_bytes) {
-        printf("******* Received %lu bytes ***************\n", bytes_read);
-        return packet;
+        asio::read(m_port, m_b, asio::transfer_exactly(prefix_bytes - bytes_read));
+        bytes_read = prefix_bytes;
     }
 
     uint8_t h0 = packet[0], h1 = packet[1];
@@ -75,12 +75,8 @@ std::variant<std::string, std::vector<uint8_t>> Comm::read_line()
         const size_t min_bytes = header_bytes + d0_bytes;
 
         if(bytes_read < min_bytes) {
-            bytes_read += m_port.read(packet, min_bytes - bytes_read);
-        }
-
-        if(bytes_read < min_bytes) {
-            printf("******* Received %lu bytes ***************\n", bytes_read);
-            return packet;
+            asio::read(m_port, m_b, asio::transfer_exactly(min_bytes - bytes_read));
+            bytes_read = min_bytes;
         }
 
         uint8_t typecode = packet[3];
@@ -119,10 +115,18 @@ std::variant<std::string, std::vector<uint8_t>> Comm::read_line()
         size_t rem_bytes = (num_bytes + header_bytes + tail_bytes) > bytes_read ? num_bytes + header_bytes + tail_bytes - bytes_read : 0;
 
         if(rem_bytes) {
-            m_port.read(packet, rem_bytes);
+            asio::read(m_port, m_b, asio::transfer_exactly(rem_bytes));
         }
 
         return packet;
+    }
+
+    // Assuming it is a debug message,
+    // copy packet bytes to line string
+    std::string line;
+
+    for(auto b : packet) {
+        line += b;
     }
 
     return line;
@@ -144,7 +148,7 @@ std::vector<uint8_t> Comm::read_message()
 
 std::optional<uint8_t> Comm::message_index(std::vector<uint8_t> packet) const
 {
-    /*    ff 55  idx type  data a
+    /*   ff 55  idx type  data a
     *    0  1   2   3     4     */
 
     const size_t header_size = 4;
@@ -159,32 +163,26 @@ std::optional<uint8_t> Comm::message_index(std::vector<uint8_t> packet) const
 
 void Comm::init_handshake()
 {
-    m_port.setTimeout(m_boot_timeout);
-    bool init_data_read = false;
+    bool handshake_ok = false;
 
-    while(!init_data_read)
+    while(!handshake_ok)
     {
-        flush();
         auto line = read_line();
         if(std::holds_alternative<std::string>(line)) {
             std::cout << "Startup msg: " << std::get<std::string>(line) << "\n";
-            m_port.setTimeout(m_msg_timeout);
+            handshake_ok = true;
         }
         else {
-            auto packet = std::get<std::vector<uint8_t>>(line);
-            if(packet.size()==0) {
-                init_data_read = true;
+            std::cout << "Received initial data:\n";
+
+            for(auto b : std::get<std::vector<uint8_t>>(line)) {
+                printf("%02x ", b);
             }
+            printf("\n");
         }
     }
 
-    m_port.setTimeout(m_msg_timeout);
-
     usleep(1500000);
-    std::cout << "Handshake completed\n";
+    std::cout << "Handshake completed\n\n";
 }
 
-void Comm::flush()
-{
-    m_port.flushInput();
-}
