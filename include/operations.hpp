@@ -57,9 +57,9 @@ class GetOperation
     Comm & m_comm;
     uint8_t m_mbot_device_id;
     uint8_t m_port;
-    uint8_t m_slot; // TODO: optional
+    std::optional<uint8_t> m_slot = std::nullopt;
 
-    P m_param;
+    std::optional<P> m_param = std::nullopt;
 };
 
 template<typename D, typename P>
@@ -119,8 +119,10 @@ std::optional<D> parse_message(std::vector<uint8_t> msg, size_t header_size)
 template<typename D, typename P>
 inline std::optional<D> GetOperation<D, P>::request()
 {
-    auto msg = create_header(m_slot);
-    append_message_data<P>(msg, m_param);
+    auto msg = create_header(m_slot.value_or(0));
+    if(m_param) {
+        append_message_data<P>(msg, m_param.value());
+    }
 
     std::vector<uint8_t> reply_msg = m_comm.write_message(msg);
 
@@ -131,6 +133,10 @@ template<typename D, typename P>
 inline std::optional<D> GetOperation<D, P>::request(uint8_t key)
 {
     auto msg = create_header(key);
+    if(m_param) {
+        append_message_data<P>(msg, m_param.value());
+    }
+
     append_message_data<P>(msg, m_param);
 
     std::vector<uint8_t> reply_msg = m_comm.write_message(msg);
@@ -184,7 +190,7 @@ class SetOperation
 
     uint8_t m_mbot_device_id;
     uint8_t m_port;
-    uint8_t m_slot;
+    std::optional<uint8_t> m_slot = std::nullopt;
 };
 
 template<typename D>
@@ -197,7 +203,7 @@ inline std::vector<uint8_t> SetOperation<D>::create_header() const
                     2, // 4 action=RUN
                     m_mbot_device_id, // 5 device
                     m_port, // 6 port/subcommand
-                    m_slot, // 7 slot/subcommand
+                    m_slot.value_or(0), // 7 slot/subcommand
     };
 
     return msg;

@@ -179,7 +179,7 @@ class Gyro
 class Version
 {
     public:
-    Version(Comm& comm)
+    explicit Version(Comm& comm)
     : get_version(comm, 0, 0, 0)
     {
     }
@@ -234,7 +234,7 @@ class UltrasonicArduino
 class Timer
 {
     public:
-    Timer(Comm& comm)
+    explicit Timer(Comm& comm)
     : get_time(comm, 50, 0, 0)
     {
     }
@@ -267,7 +267,7 @@ class Button
 class CommonCmd
 {
     public:
-    CommonCmd(Comm& comm)
+    explicit CommonCmd(Comm& comm)
     : get_battery_power(comm, 60, SubOpId(0x70), 0) // subop in port position
     , get_auriga_mode  (comm, 60, SubOpId(0x71), 0) // subop in port position
     {
