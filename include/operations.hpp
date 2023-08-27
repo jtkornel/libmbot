@@ -183,6 +183,19 @@ class SetOperation
     {
     }
 
+    SetOperation(Comm& comm,
+                 uint8_t device_id,
+                 uint8_t port,
+                 uint8_t slot,
+                 uint8_t aux_param)
+    : m_comm(comm)
+    , m_device_id(device_id)
+    , m_port(port)
+    , m_slot(slot)
+    , m_aux_param(aux_param)
+    {
+    }
+
     private:
     std::vector<uint8_t> create_header() const;
 
@@ -191,6 +204,7 @@ class SetOperation
     uint8_t m_device_id;
     uint8_t m_port;
     std::optional<uint8_t> m_slot = std::nullopt;
+    std::optional<uint8_t> m_aux_param = std::nullopt;
 };
 
 template<typename D>
@@ -202,9 +216,18 @@ inline std::vector<uint8_t> SetOperation<D>::create_header() const
                     0, // 3 index
                     2, // 4 action=RUN
                     m_device_id, // 5 device
-                    m_port, // 6 port/subcommand
-                    m_slot.value_or(0), // 7 slot/subcommand
+                    m_port // 6 port/subcommand
     };
+
+    // If slot is set, header length is 8 bytes
+    if(m_slot) {
+        msg.push_back(m_slot.value());
+    }
+
+    // If aux param is set, header length is 9 bytes
+    if(m_slot && m_aux_param) {
+        msg.push_back(m_aux_param.value());
+    }
 
     return msg;
 }
