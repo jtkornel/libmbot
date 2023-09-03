@@ -25,6 +25,10 @@ std::vector<uint8_t> Comm::write_message(std::vector<uint8_t> msg)
 
         maybe_msg = read_message();
 
+        if(is_ack(maybe_msg)) {
+            break;
+        }
+
         auto return_msg_ind = message_index(maybe_msg);
 
         // Ignore possible older unread messages
@@ -76,6 +80,13 @@ std::variant<std::string, std::vector<uint8_t>> Comm::read_message_or_text()
 
     if(h0==0xff && h1==0x55) {
 
+        const size_t tail_bytes = 2;
+
+        // ACK package
+        if(bytes_read == prefix_bytes + tail_bytes) {
+            return packet;
+        }
+
         const size_t header_bytes = 4;
         const size_t d0_bytes = 1;
         const size_t min_bytes = header_bytes + d0_bytes;
@@ -118,7 +129,6 @@ std::variant<std::string, std::vector<uint8_t>> Comm::read_message_or_text()
             break;
         }
 
-        const size_t tail_bytes = 2;
         size_t rem_bytes = (num_bytes + header_bytes + tail_bytes) > bytes_read ? num_bytes + header_bytes + tail_bytes - bytes_read : 0;
 
         if(rem_bytes) {
@@ -173,6 +183,33 @@ std::optional<uint8_t> Comm::message_index(std::optional<std::vector<uint8_t>> m
     }
 
     return packet[2];
+}
+
+bool Comm::is_ack(std::optional<std::vector<uint8_t>> maybe_packet) const
+{
+    if(!maybe_packet) {
+        return false;
+    }
+
+    auto packet = *maybe_packet;
+
+    /*   ff 55  CR LF
+    *    0  1   2   3  */
+
+    const size_t prefix_size = 2;
+    const size_t tail_size = 2;
+
+    if(packet.size() < prefix_size + tail_size) {
+        return false;
+    }
+
+    uint8_t h0 = packet[0], h1 = packet[1];
+
+    if(h0==0xff && h1==0x55 && packet[2]==0x0d && packet[3]==0x0a) {
+        return true;
+    }
+
+    return false;
 }
 
 void Comm::init_handshake()

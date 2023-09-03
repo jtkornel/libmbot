@@ -80,7 +80,7 @@ inline std::vector<uint8_t> GetOperation<D,P>::create_header(uint8_t slot) const
 }
 
 template<typename T>
-inline void append_message_data(std::vector<uint8_t> msg, T &data)
+inline void append_message_data(std::vector<uint8_t> &msg, T &data)
 {
     size_t msg_size = msg.size();
     uint8_t const* data_ptr = reinterpret_cast<uint8_t const*>(&data);
@@ -92,7 +92,7 @@ inline void append_message_data(std::vector<uint8_t> msg, T &data)
 }
 
 template<>
-inline void append_message_data<Noparam>(std::vector<uint8_t> msg, Noparam &data)
+inline void append_message_data<Noparam>(std::vector<uint8_t> &msg, Noparam &data)
 {
     (void)msg;
     (void)data;

@@ -36,6 +36,8 @@ class Comm
     std::variant<std::string, std::vector<uint8_t>> read_message_or_text();
     void move_streambuf_to_packet(std::vector<uint8_t>& packet);
     std::optional<uint8_t> message_index(std::optional<std::vector<uint8_t>> packet) const;
+    bool is_ack(std::optional<std::vector<uint8_t>> maybe_packet) const;
+
     void init_handshake();
 
     asio::serial_port m_port;
