@@ -13,6 +13,8 @@
 #include <asio.hpp>
 
 
+namespace libmbot {
+
 class Comm
 {
     public:
@@ -42,3 +44,4 @@ class Comm
     uint8_t m_msg_index = 0;
 };
 
+} // namespace libmbot

@@ -3,6 +3,7 @@
 #include "comm.hpp"
 #include "operations.hpp"
 
+namespace libmbot {
 class UltrasonicSensor
 {
     public:
@@ -203,8 +204,8 @@ class DigitalInput
 class AnalogInput
 {
     public:
-    AnalogInput(Comm& comm, uint8_t port)
-    : get_value(comm, 31, port, 0)
+    AnalogInput(Comm& comm, uint8_t port, uint8_t slot)
+    : get_value(comm, 31, port, slot)
     {
     }
 
@@ -636,4 +637,4 @@ class Buzzer
     SetOperation<BuzzerTone> set_tone;
 };
 
-
+} // namespace libmbot

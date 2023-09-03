@@ -1,6 +1,8 @@
 #include "comm.hpp"
 
 
+namespace libmbot {
+
 std::vector<uint8_t> Comm::write_message(std::vector<uint8_t> msg)
 {
         /*    ff 55 len idx action device port  slot  data a
@@ -197,3 +199,4 @@ void Comm::init_handshake()
     std::cout << "Handshake completed\n\n";
 }
 
+} // namespace libmbot

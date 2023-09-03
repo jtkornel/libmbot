@@ -6,6 +6,7 @@
 #include <chrono>
 #include <unistd.h>
 
+using namespace libmbot;
 
 int main()
 {

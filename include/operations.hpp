@@ -7,6 +7,7 @@
 #include <tuple>
 #include <optional>
 
+namespace libmbot {
 
 using Noparam = std::tuple<>;
 using SubOpId = uint8_t;
@@ -243,3 +244,4 @@ inline void SetOperation<D>::request(D data)
     m_comm.write_message(msg);
 }
 
+} // namespace libmbot
