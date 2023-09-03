@@ -34,6 +34,7 @@ add_library(${LIBRARY_NAME} STATIC
 # Example executables
 set(EXAMPLES
     battery_power
+    auriga_board
 )
 
 foreach(EXAMPLE ${EXAMPLES})

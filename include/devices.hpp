@@ -29,9 +29,9 @@ class TemperatureSensor
 class LightSensor
 {
     public:
-    LightSensor(Comm& comm, uint8_t port)
-    : get_light_level(comm, 3, port)
-    , set_led_light_level(comm, 3, port)
+    LightSensor(Comm& comm, uint8_t port, uint8_t slot)
+    : get_light_level(comm, 3, port, slot)
+    , set_led_light_level(comm, 3, port, slot)
     {
     }
 
@@ -167,7 +167,7 @@ class GasSensor
 class Gyro
 {
     public:
-    Gyro(Comm& comm, uint8_t port)
+    Gyro(Comm& comm, uint8_t port) // 0 -external, 1 - onboard
     : get_x(comm, 6, port, 1)
     , get_y(comm, 6, port, 2)
     , get_z(comm, 6, port, 3)
