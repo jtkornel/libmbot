@@ -1,7 +1,7 @@
 # libmbot
 C++ library for interfacing with mbot robots over a serial port.
 
-Libmbot has an object representation of devices connected the Makeblock Arduino boards, with set and get operations that encapsulate communication with each device. In other words a remote method interface which allows writing functionality on host without updating the mbot firmware. For now it supports communicating with the standard Makeblock firmware.
+Libmbot has an object representation of devices connected the Makeblock Arduino boards, with set and get operations that encapsulate communication with each device. In other words it exposes a remote method interface which allows writing functionality on host without updating the mbot firmware. For now it supports communicating with the standard Makeblock firmware. This should give support for most sensors available, since the firmware is the basis for the official GUI block programming model.
 
 As a higher-level abstraction devices can be grouped into board objects which helps configuring built-in ports and slots and validate externally connected devices.
 
