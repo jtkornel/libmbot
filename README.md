@@ -1,14 +1,14 @@
 # libmbot
 C++ library for interfacing with mBot robots over a serial port.
 
-Libmbot has an object representation of devices connected the Makeblock Arduino boards, with set and get operations that encapsulate communication with each device. In other words it exposes a remote method interface which allows writing functionality on host without updating the mBot firmware. For now it supports communicating with the standard Makeblock firmware. This should give support for most sensors available, since the firmware is the basis for the official GUI block programming model.
+Libmbot has an object representation of devices connected to the Makeblock Arduino boards, with set and get operations that encapsulate communication with each device. In other words, it exposes a remote method interface that allows writing functionality on the host without updating the mBot firmware. For now, it supports communicating with the standard Makeblock firmware. This should support most sensors available, since the firmware is the basis for the official GUI block programming model.
 
-As a higher-level abstraction, devices can be grouped into board objects which helps configuring built-in ports and slots and validate externally connected devices.
+As a higher-level abstraction, devices can be grouped into board objects which helps configure built-in ports and slots and validate externally connected devices.
 
 The library has primarily been tested on Linux. Mac support may be possible, but I have experienced unreliable communication for the USB-Serial bridge on that platform.
 
 ## Status
-The library is still in development, and has currently only been tested with onboard devices of the Auriga board shipped with the mBot Ranger kit.
+The library is still in development and has only been tested with onboard devices of the Auriga board shipped with the mBot Ranger kit.
 
 ## Example usage
 
@@ -56,7 +56,7 @@ int main()
 
 ## How to install
 
-Libmbot uses CMake as its build system, and can be built standalone or as part of a ROS2 workspace. It depends on ASIO for serial communication, which is automatically downloaded using FetchContent in the CMake file.
+Libmbot uses CMake as its build system and can be built standalone or as part of a ROS2 workspace. It depends on ASIO for serial communication, which is automatically downloaded using FetchContent in the CMake file.
 
 To build in ROS2 you can for instance add to your workspace .repo file
 ```
@@ -66,13 +66,13 @@ To build in ROS2 you can for instance add to your workspace .repo file
     version: main
 
 ```
-And then download the sourcecode and build:
+And then download the source code and build:
 ```
 vcs import src < my_workspace.repos
 
 colcon build --symlink-install
 ```
 ## Resources
-Useful references for the mBot Arduino firmware
-* [Instructables - advanced makeblock sensor DIY](https://www.instructables.com/Advanced-Makeblock-Sensors-DIY/)
+Useful references for the mBot Arduino firmware and sensors:
+* [Instructables - Advanced Makeblock Sensors DIY](https://www.instructables.com/Advanced-Makeblock-Sensors-DIY/)
 * [Makeblock Ranger Arduino Coding Reference](https://docs.google.com/document/d/1EpMWJo9pP2J_pstzXA-XHK8t00Z70SCZYwZ_Kl7VLuw)
