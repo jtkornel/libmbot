@@ -74,5 +74,5 @@ colcon build --symlink-install
 ```
 ## Resources
 Useful references for the mbot Arduino firmware
-[Instructables - advanced makeblock sensor DIY] (https://www.instructables.com/Advanced-Makeblock-Sensors-DIY/)
-[Makeblock Ranger Arduino Coding Reference](https://docs.google.com/document/d/1EpMWJo9pP2J_pstzXA-XHK8t00Z70SCZYwZ_Kl7VLuw)
+* [Instructables - advanced makeblock sensor DIY](https://www.instructables.com/Advanced-Makeblock-Sensors-DIY/)
+* [Makeblock Ranger Arduino Coding Reference](https://docs.google.com/document/d/1EpMWJo9pP2J_pstzXA-XHK8t00Z70SCZYwZ_Kl7VLuw)
