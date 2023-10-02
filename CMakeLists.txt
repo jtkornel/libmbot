@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.17)
 project(libmbot)
 
+set(PACKAGE_VERSION 0.1.0)
+
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
@@ -18,7 +20,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 find_package(Asio REQUIRED)
 find_package(Threads REQUIRED)
 
-set(LIBRARY_NAME mbot)
+set(LIBRARY_NAME libmbot)
 
 include_directories(
     include
@@ -45,12 +47,38 @@ foreach(EXAMPLE ${EXAMPLES})
     )
 endforeach()
 
-target_link_libraries(${LIBRARY_NAME} asio)
+target_link_libraries(${LIBRARY_NAME} PRIVATE "$<BUILD_INTERFACE:asio>")
 
 install(
-    TARGETS
-    ${LIBRARY_NAME}
+    TARGETS ${LIBRARY_NAME}
+    EXPORT ${LIBRARY_NAME}-targets
     RUNTIME DESTINATION bin
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
+    INCLUDES DESTINATION include
+)
+
+install(EXPORT ${LIBRARY_NAME}-targets
+    FILE ${LIBRARY_NAME}-targets.cmake
+    NAMESPACE ${LIBRARY_NAME}::
+    DESTINATION lib/cmake/${LIBRARY_NAME}
+)
+
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    ${LIBRARY_NAME}-config-version.cmake
+    VERSION ${PACKAGE_VERSION}
+    COMPATIBILITY AnyNewerVersion
+)
+
+# generate the config file that includes the exports
+configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/config.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config.cmake"
+    INSTALL_DESTINATION "lib/cmake/${LIBRARY_NAME}"
+    NO_SET_AND_CHECK_MACRO
+    NO_CHECK_REQUIRED_COMPONENTS_MACRO
+)
+
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config.cmake" "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config-version.cmake"
+    DESTINATION lib/cmake/${LIBRARY_NAME}
 )

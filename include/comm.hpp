@@ -1,9 +1,5 @@
 #pragma once
 
-#ifndef ASIO_STANDALONE
-#error "Code assumes non-boost ASIO"
-#endif
-
 #include <iostream>
 #include <variant>
 #include <stdio.h>
