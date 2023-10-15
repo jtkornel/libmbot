@@ -1,3 +1,4 @@
+#pragma once
 #include "comm.hpp"
 #include "devices.hpp"
 
