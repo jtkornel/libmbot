@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.23)
 project(libmbot)
 
 set(PACKAGE_VERSION 0.1.0)
@@ -22,12 +22,26 @@ find_package(Threads REQUIRED)
 
 set(LIBRARY_NAME libmbot)
 
-include_directories(
-    include
-)
-
 add_library(${LIBRARY_NAME} STATIC
     src/comm.cpp
+)
+
+set_property(TARGET ${LIBRARY_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+target_include_directories(${LIBRARY_NAME}
+    PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_sources(
+    ${LIBRARY_NAME}
+    PUBLIC
+    FILE_SET public_headers
+    TYPE HEADERS
+    BASE_DIRS include
+    FILES
+    include/boards.hpp
     include/comm.hpp
     include/devices.hpp
     include/operations.hpp
@@ -49,25 +63,10 @@ endforeach()
 
 target_link_libraries(${LIBRARY_NAME} PRIVATE "$<BUILD_INTERFACE:asio>")
 
-install(
-    TARGETS ${LIBRARY_NAME}
-    EXPORT ${LIBRARY_NAME}-targets
-    RUNTIME DESTINATION bin
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib
-    INCLUDES DESTINATION include
-)
-
-install(EXPORT ${LIBRARY_NAME}-targets
-    FILE ${LIBRARY_NAME}-targets.cmake
-    NAMESPACE ${LIBRARY_NAME}::
-    DESTINATION lib/cmake/${LIBRARY_NAME}
-)
-
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
-    ${LIBRARY_NAME}-config-version.cmake
-    VERSION ${PACKAGE_VERSION}
+    "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config-version.cmake"
+    VERSION "${PACKAGE_VERSION}"
     COMPATIBILITY AnyNewerVersion
 )
 
@@ -79,6 +78,26 @@ configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/config.cmake.in
     NO_CHECK_REQUIRED_COMPONENTS_MACRO
 )
 
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config.cmake" "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config-version.cmake"
+# Install targets
+install(
+    TARGETS ${LIBRARY_NAME}
+    EXPORT ${LIBRARY_NAME}-targets
+    FILE_SET
+    public_headers
+    RUNTIME DESTINATION bin
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(EXPORT ${LIBRARY_NAME}-targets
+    FILE ${LIBRARY_NAME}-targets.cmake
+    NAMESPACE ${LIBRARY_NAME}::
     DESTINATION lib/cmake/${LIBRARY_NAME}
+)
+
+# Install config and config-version
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config.cmake" "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config-version.cmake"
+    DESTINATION "lib/cmake/${LIBRARY_NAME}"
 )
