@@ -61,7 +61,9 @@ foreach(EXAMPLE ${EXAMPLES})
     )
 endforeach()
 
-target_link_libraries(${LIBRARY_NAME} PRIVATE "$<BUILD_INTERFACE:asio>")
+# Without PUBLIC, we get serious buffer overrun errors
+# which needs investigation
+target_link_libraries(${LIBRARY_NAME} PUBLIC "$<BUILD_INTERFACE:asio>")
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
