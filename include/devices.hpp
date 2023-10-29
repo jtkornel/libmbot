@@ -366,7 +366,7 @@ class EncoderBoard
     {
     }
 
-    GetOperation<uint32_t, SubOpId> get_pos;
+    GetOperation<int32_t, SubOpId> get_pos;
     GetOperation<float, SubOpId> get_speed;
     SetOperation<PosMotion> set_pos_motion;
     SetOperation<int16_t> set_speed_motion;
