@@ -3,6 +3,12 @@ project(libmbot)
 
 set(PACKAGE_VERSION 0.1.0)
 
+option(USE_SANITIZERS "Enable various runtime sanitizers")
+
+if(USE_SANITIZERS)
+    set(SANITIZER_FLAGS "-fsanitize=undefined,leak,address -fstack-protector-all -static-libasan")
+endif()
+
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
@@ -51,6 +57,7 @@ target_sources(
 set(EXAMPLES
     battery_power
     auriga_board
+    read_motor_sensors
 )
 
 foreach(EXAMPLE ${EXAMPLES})
@@ -63,7 +70,7 @@ endforeach()
 
 # Without PUBLIC, we get serious buffer overrun errors
 # which needs investigation
-target_link_libraries(${LIBRARY_NAME} PUBLIC "$<BUILD_INTERFACE:asio>")
+target_link_libraries(${LIBRARY_NAME} PUBLIC "$<BUILD_INTERFACE:asio>" ${SANITIZER_FLAGS})
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
@@ -97,9 +104,7 @@ install(EXPORT ${LIBRARY_NAME}-targets
     FILE ${LIBRARY_NAME}-targets.cmake
     NAMESPACE ${LIBRARY_NAME}::
     DESTINATION lib/cmake/${LIBRARY_NAME}
-)
-
-# Install config and config-version
+)# Install config and config-version
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config.cmake" "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config-version.cmake"
     DESTINATION "lib/cmake/${LIBRARY_NAME}"
 )

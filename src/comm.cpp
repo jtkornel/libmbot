@@ -10,6 +10,8 @@ std::vector<uint8_t> Comm::write_message(std::vector<uint8_t> msg)
 
     uint8_t msg_index = m_msg_index++;
 
+    assert(msg.size() >= 4);
+
     msg[0] = 0xff;
     msg[1] = 0x55;
     msg[2] = msg.size() - 3;
@@ -47,34 +49,53 @@ std::vector<uint8_t> Comm::write_message(std::vector<uint8_t> msg)
 }
 
 
-void Comm::move_streambuf_to_packet(std::vector<uint8_t>& packet)
+void Comm::move_streambuf_to_packet(std::vector<uint8_t>& packet, asio::streambuf& strmbuf)
 {
-    std::istream is(&m_streambuf);
+
+    #if 1  // istream implementation
+    std::istream is(&strmbuf);
     auto iit = std::istreambuf_iterator<char>(is);
     auto eos = std::istreambuf_iterator<char>();
     while (iit!=eos) {
         packet.emplace_back(*iit++);
     }
+    #else // buffer implementation
+    std::vector<uint8_t> news (asio::buffers_begin(strmbuf.data()),
+                               asio::buffers_end(strmbuf.data()));
+
+    for(auto b : news) {
+        packet.push_back(b);
+    }
+
+    strmbuf.consume(strmbuf.size());
+    #endif
 }
 
 std::variant<std::string, std::vector<uint8_t>> Comm::read_message_or_text()
 {
     std::error_code cd;
+    asio::streambuf strmbuf {256};
 
-    size_t bytes_read = asio::read_until(m_port, m_streambuf, "\r\n", cd);
+    size_t bytes_read = asio::read_until(m_port, strmbuf, "\r\n", cd);
+
+    if(!bytes_read)
+    {
+        return "No data received";
+    }
 
     if(cd) {
         return "Reading serial port failed";
     }
 
+
     const size_t prefix_bytes = 2;
     if(bytes_read < prefix_bytes) {
-        asio::read(m_port, m_streambuf, asio::transfer_exactly(prefix_bytes - bytes_read));
+        asio::read(m_port, strmbuf, asio::transfer_exactly(prefix_bytes - bytes_read));
         bytes_read = prefix_bytes;
     }
 
     std::vector<uint8_t> packet;
-    move_streambuf_to_packet(packet);
+    move_streambuf_to_packet(packet, strmbuf);
 
     uint8_t h0 = packet[0], h1 = packet[1];
 
@@ -92,8 +113,8 @@ std::variant<std::string, std::vector<uint8_t>> Comm::read_message_or_text()
         const size_t min_bytes = header_bytes + d0_bytes;
 
         if(bytes_read < min_bytes) {
-            asio::read(m_port, m_streambuf, asio::transfer_exactly(min_bytes - bytes_read));
-            move_streambuf_to_packet(packet);
+            asio::read(m_port, strmbuf, asio::transfer_exactly(min_bytes - bytes_read));
+            move_streambuf_to_packet(packet, strmbuf);
             bytes_read = min_bytes;
         }
 
@@ -132,8 +153,8 @@ std::variant<std::string, std::vector<uint8_t>> Comm::read_message_or_text()
         size_t rem_bytes = (num_bytes + header_bytes + tail_bytes) > bytes_read ? num_bytes + header_bytes + tail_bytes - bytes_read : 0;
 
         if(rem_bytes) {
-            asio::read(m_port, m_streambuf, asio::transfer_exactly(rem_bytes));
-            move_streambuf_to_packet(packet);
+            asio::read(m_port, strmbuf, asio::transfer_exactly(rem_bytes));
+            move_streambuf_to_packet(packet, strmbuf);
         }
 
         return packet;
