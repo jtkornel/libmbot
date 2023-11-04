@@ -1,4 +1,4 @@
-![CMake build on ubuntu](https://github.com/jtkornel/libmbot/actions/workflows/cmake-ubuntu-22.04.yml/badge.svg)
+![CMake build on ubuntu](https://github.com/jtkornel/libmbot/actions/workflows/cmake-ubuntu.yml/badge.svg)
 ![cppcheck (all)](https://github.com/jtkornel/libmbot/actions/workflows/cppcheck.yml/badge.svg)
 
 
