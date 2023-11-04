@@ -26,7 +26,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 find_package(Asio REQUIRED)
 find_package(Threads REQUIRED)
 
-set(LIBRARY_NAME libmbot)
+set(LIBRARY_NAME mbot)
 
 add_library(${LIBRARY_NAME} STATIC
     src/comm.cpp
@@ -74,15 +74,15 @@ target_link_libraries(${LIBRARY_NAME} PUBLIC "$<BUILD_INTERFACE:asio>" ${SANITIZ
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config-version.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake"
     VERSION "${PACKAGE_VERSION}"
     COMPATIBILITY AnyNewerVersion
 )
 
 # generate the config file that includes the exports
 configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/config.cmake.in
-    "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config.cmake"
-    INSTALL_DESTINATION "lib/cmake/${LIBRARY_NAME}"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
+    INSTALL_DESTINATION "lib/cmake/${PROJECT_NAME}"
     NO_SET_AND_CHECK_MACRO
     NO_CHECK_REQUIRED_COMPONENTS_MACRO
 )
@@ -90,7 +90,7 @@ configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/config.cmake.in
 # Install targets
 install(
     TARGETS ${LIBRARY_NAME}
-    EXPORT ${LIBRARY_NAME}-targets
+    EXPORT ${PROJECT_NAME}-targets
     FILE_SET
     public_headers
     RUNTIME DESTINATION bin
@@ -100,11 +100,13 @@ install(
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-install(EXPORT ${LIBRARY_NAME}-targets
-    FILE ${LIBRARY_NAME}-targets.cmake
-    NAMESPACE ${LIBRARY_NAME}::
-    DESTINATION lib/cmake/${LIBRARY_NAME}
-)# Install config and config-version
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config.cmake" "${CMAKE_CURRENT_BINARY_DIR}/${LIBRARY_NAME}-config-version.cmake"
-    DESTINATION "lib/cmake/${LIBRARY_NAME}"
+install(EXPORT ${PROJECT_NAME}-targets
+    FILE ${PROJECT_NAME}-targets.cmake
+    NAMESPACE ${PROJECT_NAME}::
+    DESTINATION lib/cmake/${PROJECT_NAME}
+)
+
+# Install config and config-version
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config.cmake" "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake"
+    DESTINATION "lib/cmake/${PROJECT_NAME}"
 )
