@@ -1,0 +1,41 @@
+
+name: CppCheck all
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  cppcheck:
+    runs-on: ubuntu-latest
+
+    permissions:
+      checks: write
+      contents: read
+
+    steps:
+    - uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: cppcheck
+        version: 1.0
+
+    - uses: actions/checkout@v3
+
+    - name: Run cppcheck-annotation-action
+      uses: Konstantin343/cppcheck-annotation-action@v1.0
+      with:
+        std: 'c++17'
+        platform: 'unix64'
+        log-level: 'verbose'
+
+    - name: Annotate lines with errors
+      uses: yuzutech/annotations-action@v0.4.0
+      with:
+        repo-token: "${{ secrets.GITHUB_TOKEN }}"
+        title: 'Results of CppCheck'
+        input: 'annotations.json'

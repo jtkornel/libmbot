@@ -1,4 +1,6 @@
-![CMake build on ubuntu](https://github.com/jtkornel/libmbot/actions/workflows/cmake-ubuntu-latest.yml/badge.svg)
+![CMake build on ubuntu](https://github.com/jtkornel/libmbot/actions/workflows/cmake-ubuntu-22.04.yml/badge.svg)
+![cppcheck (all)](https://github.com/jtkornel/libmbot/actions/workflows/cppcheck.yml/badge.svg)
+
 
 # libmbot
 C++ library for interfacing with mBot robots over a serial port.
