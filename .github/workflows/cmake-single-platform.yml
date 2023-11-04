@@ -34,7 +34,7 @@ jobs:
     - name: Run cppcheck-annotation-action
       uses: Konstantin343/cppcheck-annotation-action@v1.0
       with:
-        std: 'c++14'
+        std: 'c++17'
         platform: 'unix64'
         log-level: 'verbose'
 
